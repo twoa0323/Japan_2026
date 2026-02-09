@@ -1,14 +1,24 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>京阪神・旅の手帖</title>
+    <title>京阪神・旅の手帖 | Travel Journal</title>
+    
+    <!-- Dependencies: 確保版本一致且為 UMD 格式 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide React UMD: 這是瀏覽器環境直接執行的關鍵 -->
+    <script src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.min.js"></script>
+
+    <!-- Fonts: Noto Serif TC (襯線體) 用於雜誌標題，Noto Sans TC 用於內文 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600;900&display=swap" rel="stylesheet">
+
     <script>
         tailwind.config = {
             theme: {
@@ -16,62 +26,73 @@
                     fontFamily: {
                         serif: ['"Noto Serif TC"', 'serif'],
                         sans: ['"Noto Sans TC"', 'sans-serif'],
-                        display: ['"Playfair Display"', 'serif'],
                     },
                     colors: {
-                        'washi': '#FDFCF9',
-                        'sumi': '#1C1C1C',
-                        'mizu': '#A3B8C9',
-                        'accent': '#C14B3A', // Japanese Red
+                        'washi': '#FDFCF9', // 和紙色
+                        'sumi': '#1C1C1C',  // 墨色
+                        'accent': '#C14B3A', // 茜色 (日系紅)
                         'gold': '#C5A059',
+                        'muted': '#F4F1EA'
                     },
                     boxShadow: {
-                        'mag': '0 10px 40px -10px rgba(0,0,0,0.05)',
-                        'ledger': '0 20px 60px -15px rgba(0,0,0,0.08)',
+                        'mag': '0 10px 40px -10px rgba(0,0,0,0.04)',
+                        'ledger': '0 30px 60px -15px rgba(0,0,0,0.08)',
                     }
                 }
             }
         }
     </script>
+
     <style>
         body {
             background-color: #FDFCF9;
             color: #1C1C1C;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            font-family: "Noto Sans TC", sans-serif;
         }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 頁面切換動畫 */
+        .page-enter {
+            animation: fadeInScale 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .date-active::after {
+
+        #root {
+            max-width: 450px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: #FDFCF9;
+            box-shadow: 0 0 80px rgba(0,0,0,0.03);
+            position: relative;
+        }
+        
+        /* 時間軸線條 */
+        .timeline-line::before {
             content: '';
             position: absolute;
-            bottom: -8px;
-            width: 4px;
-            height: 4px;
-            background-color: #C14B3A;
-            border-radius: 50%;
+            left: 31px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(28, 28, 28, 0.05);
         }
-        .fade-bottom {
-            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
-        }
-        /* Custom transitions */
-        .page-enter {
-            animation: fadeIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+
+        /* 雜誌感直排文字裝飾 */
+        .deco-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
         }
     </style>
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "react/": "https://esm.sh/react@^19.2.4/"
   }
@@ -80,6 +101,351 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        
+        // 重要修復：從全域物件 LucideReact 中安全提取圖示
+        // Error #130 通常是因為元件為 undefined，這裡加上 fallback 確保不會崩潰
+        const LucideIcons = window.LucideReact || {};
+        
+        const SafeIcon = ({ name, className }) => {
+            const IconComponent = LucideIcons[name] || LucideIcons.Info;
+            return <IconComponent className={className} />;
+        };
+
+        // 常用圖示解構 (若不存在則設為 Info 避免 Error 130)
+        const { 
+            X = LucideIcons.Info, 
+            Info = LucideIcons.Info, 
+            Navigation = LucideIcons.Info, 
+            ArrowLeft = LucideIcons.Info, 
+            RotateCcw = LucideIcons.Info, 
+            Plane = LucideIcons.Info, 
+            Building2 = LucideIcons.Info, 
+            Trash2 = LucideIcons.Info, 
+            Edit3 = LucideIcons.Info, 
+            Plus = LucideIcons.Info, 
+            Globe = LucideIcons.Info 
+        } = LucideIcons;
+
+        const TWD_TO_JPY = 4.54545; // 0.22 匯率反算
+
+        const TRIP_DATA = [
+            {
+                date: '25', dayOfWeek: 'SAT', city: '京都市', title: '鴨川の風と錦市場',
+                activities: [
+                    { id: '1', time: '08:30', location: '台北桃園 (TPE)', category: 'Flight', description: '搭乘去程航班前往關西，預計 12:15 抵達 KIX。', isSpecial: true },
+                    { id: '2', time: '13:30', location: 'HARUKA 特急列車', category: 'Transport', description: '使用 ICOCA & HARUKA 套票直達京都車站。' },
+                    { id: '3', time: '16:00', location: '錦市場', category: 'Food', description: '享用京都小吃，體驗傳統市場氛圍。' },
+                    { id: '4', time: '18:00', location: '鴨川散策', category: 'Sightseeing', description: '在四條大橋漫步欣賞夕陽。' }
+                ]
+            },
+            {
+                date: '26', dayOfWeek: 'SUN', city: '嵐山', title: '竹林の静寂と金閣寺',
+                activities: [
+                    { id: '5', time: '09:30', location: '嵐山竹林之道', category: 'Sightseeing', description: '漫步竹林感受嵐山的清幽。' },
+                    { id: '6', time: '14:30', location: '金閣寺', category: 'Culture', description: '欣賞金碧輝煌的舍利殿。', isSpecial: true }
+                ]
+            },
+            { date: '27', dayOfWeek: 'MON', city: '宇治', title: '任天堂の聖地と抹茶', activities: [] },
+            { date: '28', dayOfWeek: 'TUE', city: '大阪', title: '清水の舞台と道頓堀', activities: [] },
+        ];
+
+        const INITIAL_LEDGER = [
+            { id: '1', name: '星宇航空機票', amount: 148100, paid: true, category: 'Flight' },
+            { id: '2', name: 'The Blossom Kumamoto', amount: 15383, paid: true, category: 'Hotel' },
+            { id: '3', name: '由布院 玉の湯', amount: 55941, paid: false, category: 'Hotel' },
+        ];
+
+        // --- UI 組件 ---
+
+        const WeatherSlider = ({ location }) => (
+            <div className="px-10 mb-16">
+                <div className="flex justify-between items-end mb-6">
+                    <h3 className="text-5xl font-serif text-sumi/5 -mb-2">{location}</h3>
+                    <span className="text-[10px] tracking-[0.2em] text-sumi/20 font-black uppercase pb-1">24H Forecast</span>
+                </div>
+                <div className="flex gap-10 overflow-x-auto hide-scrollbar py-2">
+                    {[9, 12, 15, 18, 21, 0].map(h => (
+                        <div key={h} className="flex flex-col items-center gap-4 flex-shrink-0">
+                            <span className="text-[9px] font-bold text-sumi/10 tracking-widest">{h}:00</span>
+                            <div className="w-1.5 h-1.5 bg-accent/20 rounded-full" />
+                            <span className="text-xl font-serif text-sumi/30 font-light">{16 + (h % 5)}°</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const TripCard = ({ activity, onClick }) => (
+            <div onClick={onClick} className="relative pl-12 pr-8 py-6 cursor-pointer group active:opacity-70 transition-opacity">
+                {/* 時間軸圓點 */}
+                <div className={`absolute left-[28px] top-8 w-1.5 h-1.5 rounded-full border border-washi z-10 
+                    ${activity.isSpecial ? 'bg-accent scale-150' : 'bg-sumi/20'}
+                `} />
+                
+                <div className="text-left space-y-2">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl font-serif font-black text-sumi/80 leading-none">{activity.time}</span>
+                        {activity.isSpecial && (
+                            <span className="px-2 py-0.5 border border-accent/20 text-accent text-[8px] font-bold tracking-[0.2em] uppercase rounded-sm">Highlight</span>
+                        )}
+                    </div>
+                    <h4 className="text-lg font-serif font-bold text-sumi/70 leading-tight">{activity.location}</h4>
+                    <p className="text-[11px] text-sumi/40 leading-relaxed line-clamp-2 font-light">{activity.description}</p>
+                </div>
+            </div>
+        );
+
+        const ActivityDetail = ({ activity, onClose }) => (
+            <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-end justify-center px-4 sm:px-0" onClick={onClose}>
+                <div className="bg-washi w-full max-w-md h-[88vh] rounded-t-[40px] shadow-2xl overflow-hidden flex flex-col page-enter" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center px-10 py-8">
+                        <span className="text-[10px] font-bold tracking-[0.4em] text-accent uppercase">{activity.category}</span>
+                        <button onClick={onClose} className="p-3 bg-sumi/[0.03] rounded-full"><X className="w-5 h-5 text-sumi/40" /></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-10 pb-20 text-left space-y-16 hide-scrollbar">
+                        <div>
+                            <h2 className="text-5xl font-serif font-black text-sumi leading-tight mb-8">{activity.location}</h2>
+                            <p className="text-base text-sumi/60 leading-loose font-light tracking-wide">{activity.description}</p>
+                        </div>
+                        <div className="space-y-4">
+                            <button className="w-full py-6 bg-sumi text-white rounded-2xl flex items-center justify-center gap-5 shadow-2xl active:scale-[0.98] transition-transform">
+                                <Navigation className="w-5 h-5 rotate-45" />
+                                <span className="font-serif text-lg tracking-[0.1em]">Google Maps 導航</span>
+                            </button>
+                            <button className="w-full py-6 border border-sumi/10 text-sumi/60 rounded-2xl flex items-center justify-center gap-5 active:scale-[0.98] transition-transform">
+                                <Globe className="w-5 h-5" />
+                                <span className="font-serif text-lg tracking-[0.1em]">官方行程詳情</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // --- 主程式 ---
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('itinerary');
+            const [activeDayIdx, setActiveDayIdx] = useState(0);
+            const [selectedActivity, setSelectedActivity] = useState(null);
+            
+            const [ledgerItems, setLedgerItems] = useState(INITIAL_LEDGER);
+            const [isLedgerOpen, setIsLedgerOpen] = useState(false);
+            const [editingItem, setEditingItem] = useState(null);
+            const [ledgerForm, setLedgerForm] = useState({ name: '', amount: '', category: 'Other' });
+
+            const currentDay = TRIP_DATA[activeDayIdx];
+            const totalTWD = useMemo(() => ledgerItems.reduce((acc, it) => acc + it.amount, 0), [ledgerItems]);
+            const totalJPY = Math.floor(totalTWD * TWD_TO_JPY);
+
+            const saveLedger = () => {
+                if (!ledgerForm.name || !ledgerForm.amount) return;
+                const amount = parseFloat(ledgerForm.amount);
+                if (editingItem) {
+                    setLedgerItems(prev => prev.map(it => it.id === editingItem.id ? { ...it, name: ledgerForm.name, amount, category: ledgerForm.category } : it));
+                } else {
+                    setLedgerItems(prev => [...prev, { id: Date.now().toString(), name: ledgerForm.name, amount, paid: true, category: ledgerForm.category }]);
+                }
+                setIsLedgerOpen(false);
+            };
+
+            const renderItinerary = () => (
+                <div className="page-enter">
+                    <header className="pt-24 pb-12 px-10 text-center">
+                        <div className="flex justify-center mb-6">
+                            <span className="text-[10px] tracking-[0.8em] text-sumi/20 font-black uppercase border-b border-sumi/10 pb-2">Travel Journal</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-6 mb-12">
+                            <h1 className="text-5xl font-serif font-black tracking-widest text-sumi">京阪神</h1>
+                            <div className="w-2 h-2 rounded-full bg-accent" />
+                            <h1 className="text-5xl font-serif font-black tracking-widest text-sumi uppercase">2026</h1>
+                        </div>
+                        
+                        <div className="flex justify-between items-end border-b border-sumi/[0.05] pb-6">
+                            <div className="text-left">
+                                <p className="text-[10px] text-sumi/30 tracking-[0.3em] font-sans font-bold uppercase mb-1">Kansai Odyssey</p>
+                                <p className="text-[10px] text-sumi/15 font-serif italic tracking-wider uppercase">Volume No. 01</p>
+                            </div>
+                            <div className="flex items-center gap-10">
+                                <button onClick={() => setActiveTab('ledger')} className="flex flex-col items-center gap-2 group">
+                                    <Edit3 className="w-5 h-5 text-sumi/20 group-hover:text-sumi/60 transition-colors" />
+                                    <span className="text-[9px] font-serif font-black text-sumi/40 uppercase tracking-widest">帳本</span>
+                                </button>
+                                <button onClick={() => setActiveTab('info')} className="flex flex-col items-center gap-2 group">
+                                    <Info className="w-5 h-5 text-sumi/20 group-hover:text-sumi/60 transition-colors" />
+                                    <span className="text-[9px] font-serif font-black text-sumi/40 uppercase tracking-widest">資訊</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="sticky top-0 z-[100] bg-washi/95 backdrop-blur-2xl border-b border-sumi/[0.03]">
+                        <div className="flex gap-8 px-10 py-8 overflow-x-auto hide-scrollbar">
+                            {TRIP_DATA.map((d, i) => (
+                                <button key={i} onClick={() => setActiveDayIdx(i)} className={`flex flex-col items-center min-w-[50px] transition-all duration-700 ${i === activeDayIdx ? 'scale-110' : 'opacity-20 hover:opacity-40'}`}>
+                                    <span className="text-[9px] font-bold tracking-[0.2em] mb-2">{d.dayOfWeek}</span>
+                                    <span className="text-3xl font-serif font-black leading-none">{d.date}</span>
+                                    {i === activeDayIdx && <div className="absolute -bottom-3 w-1.5 h-1.5 bg-accent rounded-full" />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="pt-16">
+                        <WeatherSlider location={currentDay.city} />
+                        
+                        <div className="px-10 mb-20">
+                            <div className="relative rounded-[40px] overflow-hidden aspect-[1.3/1] shadow-mag group">
+                                <img src={`https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=2070`} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent" />
+                                <div className="absolute bottom-10 left-10 text-white text-left pr-10">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-6 h-[1px] bg-white/40" />
+                                        <p className="text-[10px] tracking-[0.4em] font-bold uppercase opacity-60">Section Day {activeDayIdx + 1}</p>
+                                    </div>
+                                    <h2 className="text-4xl font-serif font-black tracking-tight leading-relaxed mb-1">{currentDay.title}</h2>
+                                    <p className="text-[10px] text-white/40 tracking-[0.2em] italic">Exploring {currentDay.city}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pb-40 timeline-line relative">
+                            {currentDay.activities.map(act => (
+                                <TripCard key={act.id} activity={act} onClick={() => setSelectedActivity(act)} />
+                            ))}
+                            {currentDay.activities.length === 0 && (
+                                <p className="py-32 text-sumi/10 font-serif italic text-2xl px-10">Curating special moments...</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderLedger = () => (
+                <div className="px-10 pt-20 pb-48 min-h-screen bg-washi page-enter">
+                    <button onClick={() => setActiveTab('itinerary')} className="flex items-center gap-3 text-sumi/30 mb-16 group">
+                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-[11px] font-serif font-black tracking-[0.2em] uppercase">Return to Journal</span>
+                    </button>
+
+                    <div className="flex justify-between items-start mb-20 text-left">
+                        <div className="text-left">
+                            <h2 className="text-4xl font-serif font-black text-sumi tracking-tighter mb-4">旅行帳本</h2>
+                            <div className="flex items-center gap-2 text-[10px] text-sumi/20 font-bold tracking-[0.3em] uppercase">
+                                <RotateCcw className="w-3 h-3 animate-spin duration-[5000ms]" />
+                                <span>Vault Sync Active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-12 bg-white rounded-[40px] border border-sumi/5 shadow-ledger mb-20 text-left">
+                        <p className="text-[10px] text-sumi/30 mb-4 font-serif font-black tracking-[0.2em] uppercase">Total Expenditure (TWD)</p>
+                        <h3 className="text-6xl font-serif font-black text-sumi mb-8 tracking-tighter leading-none">${totalTWD.toLocaleString()}</h3>
+                        <div className="pt-8 border-t border-sumi/[0.05] flex flex-col gap-3">
+                            <p className="text-sm font-serif text-sumi/40">均攤 / 每人: <span className="font-black text-sumi/80">${Math.floor(totalTWD/5).toLocaleString()}</span></p>
+                            <p className="text-[10px] font-serif text-sumi/15 italic tracking-widest uppercase">Equivalent to ¥{totalJPY.toLocaleString()} JPY</p>
+                        </div>
+                    </div>
+
+                    <div className="divide-y divide-sumi/[0.04] mb-20">
+                        {ledgerItems.map(item => (
+                            <div key={item.id} onClick={() => { setEditingItem(item); setLedgerForm({ name: item.name, amount: item.amount.toString(), category: item.category }); setIsLedgerOpen(true); }} className="flex justify-between items-center py-10 group cursor-pointer transition-all">
+                                <div className="text-left space-y-3">
+                                    <h4 className="text-xl font-serif font-black text-sumi/80 group-hover:text-accent transition-colors">{item.name}</h4>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full border border-sumi/10 flex items-center justify-center">
+                                            <div className={`w-1 h-1 rounded-full ${item.paid ? 'bg-sumi/20' : 'bg-accent animate-pulse'}`} />
+                                        </div>
+                                        <span className={`text-[9px] font-bold tracking-widest uppercase ${item.paid ? 'text-sumi/20' : 'text-accent'}`}>{item.paid ? 'Settled' : 'Pending'}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-2xl font-serif font-black text-sumi/80">${item.amount.toLocaleString()}</p>
+                                    <p className="text-[10px] font-serif text-sumi/10 italic">Est. ¥{Math.floor(item.amount * TWD_TO_JPY).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="fixed bottom-12 left-0 right-0 p-10 flex justify-center pointer-events-none z-[100]">
+                        <button onClick={() => { setEditingItem(null); setLedgerForm({ name: '', amount: '', category: 'Other' }); setIsLedgerOpen(true); }} className="w-full max-w-sm py-6 bg-sumi text-white rounded-2xl font-serif text-lg tracking-[0.6em] shadow-2xl flex items-center justify-center gap-4 hover:scale-[1.03] active:scale-95 transition-all pointer-events-auto">
+                            <Plus className="w-5 h-5" />
+                            <span>記帳</span>
+                        </button>
+                    </div>
+
+                    {isLedgerOpen && (
+                        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-xl flex items-end justify-center px-4 sm:px-0" onClick={() => setIsLedgerOpen(false)}>
+                            <div className="bg-washi w-full max-w-md h-[82vh] rounded-t-[48px] overflow-hidden flex flex-col page-enter" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center px-12 py-10">
+                                    <h3 className="text-2xl font-serif font-black text-sumi">{editingItem ? 'Edit Entry' : 'New Entry'}</h3>
+                                    <button onClick={() => setIsLedgerOpen(false)} className="p-3 bg-sumi/[0.03] rounded-full text-sumi/40"><X className="w-6 h-6" /></button>
+                                </div>
+                                <div className="flex-1 px-12 pb-12 space-y-16 overflow-y-auto hide-scrollbar text-left">
+                                    <div className="space-y-6">
+                                        <label className="text-[11px] font-black tracking-[0.3em] text-sumi/30 uppercase block">Entry Description</label>
+                                        <input type="text" value={ledgerForm.name} onChange={e => setLedgerForm({...ledgerForm, name: e.target.value})} className="w-full text-4xl font-serif bg-transparent border-b border-sumi/10 py-5 focus:outline-none focus:border-sumi transition-colors" placeholder="輸入項目..." />
+                                    </div>
+                                    <div className="space-y-6">
+                                        <label className="text-[11px] font-black tracking-[0.3em] text-sumi/30 uppercase block">Amount (TWD)</label>
+                                        <div className="relative">
+                                            <input type="number" value={ledgerForm.amount} onChange={e => setLedgerForm({...ledgerForm, amount: e.target.value})} className="w-full text-7xl font-serif font-black bg-transparent border-b border-sumi/10 py-5 focus:outline-none focus:border-sumi transition-colors" placeholder="0" />
+                                            <div className="absolute right-0 bottom-8 text-xs font-serif text-sumi/20 uppercase tracking-[0.4em]">TWD</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4 pt-12">
+                                        {editingItem && <button onClick={() => { setLedgerItems(prev => prev.filter(it => it.id !== editingItem.id)); setIsLedgerOpen(false); }} className="flex-1 py-6 border border-accent/20 text-accent rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-accent/5"><Trash2 className="w-5 h-5" /><span className="font-serif font-bold">Delete</span></button>}
+                                        <button onClick={saveLedger} className="flex-[2] py-6 bg-sumi text-white rounded-2xl flex items-center justify-center shadow-2xl transition-all active:scale-[0.98]"><span className="font-serif text-xl tracking-[0.4em]">儲存項目</span></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            const renderInfo = () => (
+                <div className="px-10 pt-24 pb-32 bg-washi min-h-screen page-enter text-left">
+                    <button onClick={() => setActiveTab('itinerary')} className="flex items-center gap-3 text-sumi/30 mb-16 hover:text-sumi transition-colors"><ArrowLeft className="w-4 h-4" /><span className="text-[11px] font-serif font-black tracking-[0.2em] uppercase">Return</span></button>
+                    <header className="text-center mb-24">
+                        <div className="w-24 h-24 text-sumi/5 mx-auto mb-10"><Info className="w-full h-full" /></div>
+                        <h2 className="text-5xl font-serif font-black text-sumi/80 uppercase tracking-[0.6em] ml-6 text-center">旅行手帖</h2>
+                        <p className="text-[10px] text-sumi/20 mt-6 tracking-[0.4em] uppercase font-bold text-center">Essential Archives</p>
+                    </header>
+                    <div className="space-y-12">
+                        <div className="p-12 bg-white rounded-[40px] border border-sumi/5 shadow-mag">
+                            <h3 className="text-[11px] font-serif font-black text-sumi/20 mb-8 uppercase tracking-[0.4em]">Accommodation / 宿泊</h3>
+                            <p className="text-3xl font-serif font-bold text-sumi mb-3 leading-tight">東橫INN 京都四條烏丸</p>
+                            <p className="text-sm text-sumi/40 leading-loose font-light">Heart of the city. Perfect access to Kyoto's main transit arteries.</p>
+                        </div>
+                        <div className="p-12 bg-accent rounded-[40px] text-white shadow-ledger">
+                            <h3 className="text-[11px] font-serif font-bold mb-8 uppercase tracking-[0.4em] opacity-40">Notice / 備忘錄</h3>
+                            <p className="text-2xl font-serif font-medium leading-relaxed">Visit Japan Web 入境證件 QR Code 是否已離線儲存？</p>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen flex flex-col font-sans select-none">
+                    <div className="flex-1">
+                        {activeTab === 'itinerary' && renderItinerary()}
+                        {activeTab === 'ledger' && renderLedger()}
+                        {activeTab === 'info' && renderInfo()}
+                    </div>
+                    {selectedActivity && <ActivityDetail activity={selectedActivity} onClose={() => setSelectedActivity(null)} />}
+                </div>
+            );
+        };
+
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(<App />);
+        }
+    </script>
 </body>
 </html>

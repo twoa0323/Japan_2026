@@ -1,0 +1,7 @@
+{
+  "name": "Copy of 京阪神・旅の手帖 (Keihanshin Travel Journal)",
+  "description": "A Japanese minimalist magazine-style travel application for Kyoto, Osaka, and Kobe.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

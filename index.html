@@ -27,6 +27,7 @@
                     },
                     boxShadow: {
                         'mag': '0 10px 40px -10px rgba(0,0,0,0.05)',
+                        'ledger': '0 20px 60px -15px rgba(0,0,0,0.08)',
                     }
                 }
             }
@@ -45,26 +46,40 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        .writing-vertical {
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
+        .date-active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            width: 4px;
+            height: 4px;
+            background-color: #C14B3A;
+            border-radius: 50%;
         }
         .fade-bottom {
             mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+        /* Custom transitions */
+        .page-enter {
+            animation: fadeIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
 </head>
 <body>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
